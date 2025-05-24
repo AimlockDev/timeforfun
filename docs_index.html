@@ -113,10 +113,11 @@
   </div>
   <div id="gameover" style="display:none;"></div>
 
-  <!-- Three.js CDN -->
-  <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.154.0/examples/js/controls/PointerLockControls.js"></script>
-  <script>
+  <!-- THREE.JS and PointerLockControls as ES Modules -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
+    import { PointerLockControls } from 'https://unpkg.com/three@0.154.0/examples/jsm/controls/PointerLockControls.js';
+
     // --- GLOBALS ---
     let renderer, scene, camera, controls, clock;
     let player = {
@@ -178,7 +179,7 @@
       scene.add(dirLight);
 
       // Controls
-      controls = new THREE.PointerLockControls(camera, renderer.domElement);
+      controls = new PointerLockControls(camera, renderer.domElement);
       controls.getObject().position.set(0,2,0);
 
       // Floor
@@ -669,12 +670,16 @@
     document.addEventListener('keyup', e=>{
       keys[e.key.toLowerCase()] = false;
     });
-    renderer && renderer.domElement.addEventListener('mousedown', e=>{
-      mouseDown = true;
-    });
-    renderer && renderer.domElement.addEventListener('mouseup', e=>{
-      mouseDown = false;
-    });
+
+    // These must be attached after renderer is created!
+    function setupMouse() {
+      renderer.domElement.addEventListener('mousedown', e=>{
+        mouseDown = true;
+      });
+      renderer.domElement.addEventListener('mouseup', e=>{
+        mouseDown = false;
+      });
+    }
 
     // Prevent scrolling
     window.addEventListener('keydown', function(e) {
@@ -690,6 +695,7 @@
         return;
       }
       setup();
+      setupMouse();
       handlePointerLock();
     };
   </script>
