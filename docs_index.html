@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Graphics Simulator Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    #info {
+      position: absolute; top: 10px; left: 10px;
+      color: #fff; font-family: Arial, sans-serif; font-size: 16px;
+      background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;
+    }
+    #canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <b>3D Graphics Simulator</b><br>
+    WASD: Move<br>
+    Mouse: Look<br>
+    Space: Jump<br>
+    Click to lock pointer
+  </div>
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js";
+    import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js";
+
+    let camera, scene, renderer, controls;
+    let objects = [];
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let canJump = false;
+    let velocity = new THREE.Vector3();
+    let direction = new THREE.Vector3();
+    let prevTime = performance.now();
+
+    init();
+    animate();
+
+    function init() {
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x202030);
+
+      // Light
+      const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+      light.position.set(0, 200, 0);
+      scene.add(light);
+
+      // Floor
+      const floorGeometry = new THREE.PlaneGeometry(200, 200);
+      const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+      floor.rotation.x = - Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+      objects.push(floor);
+
+      // Some cubes to interact with
+      for (let i = 0; i < 20; i++) {
+        const boxGeometry = new THREE.BoxGeometry(2, 2, 2);
+        const boxMaterial = new THREE.MeshPhongMaterial({ color: Math.random() * 0xffffff });
+        const box = new THREE.Mesh(boxGeometry, boxMaterial);
+        box.position.set(
+          Math.random() * 100 - 50,
+          1,
+          Math.random() * 100 - 50
+        );
+        scene.add(box);
+        objects.push(box);
+      }
+
+      // Camera controls
+      controls = new PointerLockControls(camera, document.body);
+      scene.add(controls.getObject());
+
+      document.body.addEventListener('click', () => {
+        controls.lock();
+      });
+
+      const onKeyDown = function (event) {
+        switch (event.code) {
+          case 'ArrowUp':
+          case 'KeyW':
+            moveForward = true;
+            break;
+          case 'ArrowLeft':
+          case 'KeyA':
+            moveLeft = true;
+            break;
+          case 'ArrowDown':
+          case 'KeyS':
+            moveBackward = true;
+            break;
+          case 'ArrowRight':
+          case 'KeyD':
+            moveRight = true;
+            break;
+          case 'Space':
+            if (canJump === true) velocity.y += 10;
+            canJump = false;
+            break;
+        }
+      };
+
+      const onKeyUp = function (event) {
+        switch (event.code) {
+          case 'ArrowUp':
+          case 'KeyW':
+            moveForward = false;
+            break;
+          case 'ArrowLeft':
+          case 'KeyA':
+            moveLeft = false;
+            break;
+          case 'ArrowDown':
+          case 'KeyS':
+            moveBackward = false;
+            break;
+          case 'ArrowRight':
+          case 'KeyD':
+            moveRight = false;
+            break;
+        }
+      };
+
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      renderer.domElement.id = 'canvas';
+      document.body.appendChild(renderer.domElement);
+
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (controls.isLocked === true) {
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+        velocity.y -= 9.8 * 12.0 * delta; // gravity
+
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+        direction.normalize();
+
+        if (moveForward || moveBackward) velocity.z -= direction.z * 40.0 * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * 40.0 * delta;
+
+        controls.moveRight(- velocity.x * delta);
+        controls.moveForward(- velocity.z * delta);
+
+        controls.getObject().position.y += velocity.y * delta;
+
+        // Simple ground collision
+        if (controls.getObject().position.y < 2) {
+          velocity.y = 0;
+          controls.getObject().position.y = 2;
+          canJump = true;
+        }
+
+        prevTime = time;
+      }
+
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
